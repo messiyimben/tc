@@ -1,0 +1,16 @@
+local args = {
+    [1] = "Illegal Fuel",
+    [2] = workspace:WaitForChild("Zone_Shop_Sell"):WaitForChild("Item_Shop"):WaitForChild("ItemZone"),
+    [3] = {
+        [1] = "Bulgaristan",
+        [2] = "Illegal"
+    }
+}
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local buyItemEvent = replicatedStorage:WaitForChild("Events"):WaitForChild("Money"):WaitForChild("buyItem")
+
+for i = 1, 25 do
+    buyItemEvent:FireServer(unpack(args))
+    wait(0.1) -- Sunucuyu yormamak için ufak bir gecikme (isteğe bağlı)
+end
