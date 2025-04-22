@@ -28,4 +28,8 @@ if humanoid and seat then
     character:SetPrimaryPartCFrame(CFrame.new(seat.Position + Vector3.new(0, 2, 0)))
     wait(0.2)
     humanoid.Sit = true
+
+    -- Koltuk silinsin
+    wait(0.5) -- oyuncunun oturduğundan emin olmak için kısa bir bekleme
+    seat:Destroy()
 end
