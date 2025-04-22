@@ -1,0 +1,35 @@
+-- Bu LocalScript, StarterPlayerScripts içine yerleştirilmeli
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Koltuk oluşturulacak pozisyon
+local seatPosition = Vector3.new(870, 4, 1912)
+
+-- Koltuk oluştur
+local seat = Instance.new("Seat")
+seat.Size = Vector3.new(2, 1, 2)
+seat.Position = seatPosition
+seat.Anchored = true
+seat.Name = "MagicSeat"
+seat.Parent = workspace
+
+-- 2 saniye bekle
+wait(2)
+
+-- Oyuncuyu oturt
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- Oturma işlemi
+if humanoid and seat then
+    humanoid.Sit = false -- Önce ayakta olmasını sağla
+    wait(0.1)
+    character:SetPrimaryPartCFrame(CFrame.new(seat.Position + Vector3.new(0, 2, 0)))
+    wait(0.2)
+    humanoid.Sit = true
+
+    -- Koltuk silinsin
+    wait(0.5) -- oyuncunun oturduğundan emin olmak için kısa bir bekleme
+    seat:Destroy()
+end
