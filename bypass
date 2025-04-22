@@ -1,0 +1,41 @@
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+-- CoreGui kontrolü
+local function isInCoreGui(obj)
+	local current = obj
+	while current.Parent do
+		if current == game:GetService("CoreGui") then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+-- Belirli objelerin korunması (CameraScript ve ControlScript)
+local function isProtectedScript(obj)
+	if not localPlayer then return false end
+
+	local ps = localPlayer:FindFirstChild("PlayerScripts")
+	if not ps then return false end
+
+	return obj == ps:FindFirstChild("CameraScript") or obj == ps:FindFirstChild("ControlScript")
+end
+
+-- Script silme fonksiyonu
+local function deleteAllScriptsExceptCoreGuiAndProtected()
+	for _, obj in ipairs(game:GetDescendants()) do
+		if (obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript")) 
+			and not isInCoreGui(obj)
+			and not isProtectedScript(obj) then
+
+			print("Silinen Script: " .. obj:GetFullName())
+			obj:Destroy()
+		end
+	end
+	print("CoreGui ve özel scriptler hariç tüm scriptler silindi.")
+end
+
+-- Çalıştır
+deleteAllScriptsExceptCoreGuiAndProtected()
