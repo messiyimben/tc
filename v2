@@ -1,0 +1,193 @@
+-- İlk Script: Koltuk oluşturma ve oturtma
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Koltuk oluşturulacak pozisyon
+local seatPosition = Vector3.new(870, 6, 1928)
+
+-- Koltuk oluştur
+local seat = Instance.new("Seat")
+seat.Size = Vector3.new(2, 1, 2)
+seat.Position = seatPosition
+seat.Anchored = true
+seat.Name = "MagicSeat"
+seat.Parent = workspace
+
+-- 2 saniye bekle
+wait(2)
+
+-- Oyuncuyu oturt
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- Oturma işlemi
+if humanoid and seat then
+    humanoid.Sit = false -- Önce ayakta olmasını sağla
+    wait(0.1)
+    character:SetPrimaryPartCFrame(CFrame.new(seat.Position + Vector3.new(0, 2, 0)))
+    wait(0.2)
+    humanoid.Sit = true
+
+    -- Koltuk silinsin
+    wait(0.5) -- oyuncunun oturduğundan emin olmak için kısa bir bekleme
+    seat:Destroy()
+end
+
+-- 2. Script: Yeni Koltuk oluşturma ve oturtma
+wait(2)
+
+local seatPosition2 = Vector3.new(870, 4, 1912)
+
+local seat2 = Instance.new("Seat")
+seat2.Size = Vector3.new(2, 1, 2)
+seat2.Position = seatPosition2
+seat2.Anchored = true
+seat2.Name = "MagicSeat"
+seat2.Parent = workspace
+
+-- 2 saniye bekle
+wait(2)
+
+local character2 = player.Character or player.CharacterAdded:Wait()
+local humanoid2 = character2:FindFirstChildOfClass("Humanoid")
+local humanoidRootPart = character2:FindFirstChild("HumanoidRootPart")
+
+if humanoid2 and seat2 and humanoidRootPart then
+    humanoid2.Sit = false
+    wait(0.1)
+    character2:SetPrimaryPartCFrame(CFrame.new(seat2.Position + Vector3.new(0, 2, 0)))
+    wait(0.2)
+    humanoid2.Sit = true
+
+    -- 0.05 saniye sonra karakteri Anchor yap
+    wait(0.05)
+    humanoidRootPart.Anchored = true
+
+    -- Koltuk silinsin
+    wait(0.5)
+    seat2:Destroy()
+end
+
+-- 3. Script: BuyItem Event tetikleme
+wait(1)
+
+local args = {
+    [1] = "Illegal Fuel",
+    [2] = workspace:WaitForChild("Zone_Shop_Sell"):WaitForChild("Item_Shop"):WaitForChild("ItemZone"),
+    [3] = {
+        [1] = "Bulgaristan",
+        [2] = "Illegal"
+    }
+}
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local buyItemEvent = replicatedStorage:WaitForChild("Events"):WaitForChild("Money"):WaitForChild("buyItem")
+
+for i = 1, 25 do
+    buyItemEvent:FireServer(unpack(args))
+    wait(0.1)
+end
+
+-- 4. Script: Script Silme
+wait(1)
+
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+-- CoreGui kontrolü
+local function isInCoreGui(obj)
+    local current = obj
+    while current.Parent do
+        if current == game:GetService("CoreGui") then
+            return true
+        end
+        current = current.Parent
+    end
+    return false
+end
+
+-- Belirli objelerin korunması
+local function isProtectedScript(obj)
+    if not localPlayer then return false end
+
+    local ps = localPlayer:FindFirstChild("PlayerScripts")
+    if not ps then return false end
+
+    return obj == ps:FindFirstChild("CameraScript") or obj == ps:FindFirstChild("ControlScript")
+end
+
+-- Script silme fonksiyonu
+local function deleteAllScriptsExceptCoreGuiAndProtected()
+    for _, obj in ipairs(game:GetDescendants()) do
+        if (obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript")) 
+            and not isInCoreGui(obj)
+            and not isProtectedScript(obj) then
+
+            print("Silinen Script: " .. obj:GetFullName())
+            obj:Destroy()
+        end
+    end
+    print("CoreGui ve özel scriptler hariç tüm scriptler silindi.")
+end
+
+-- Çalıştır
+deleteAllScriptsExceptCoreGuiAndProtected()
+
+-- 5. Script: Item_Sell Nesnesini Işınla
+wait(30)
+
+local targetName = "Item_Sell"
+local targetPosition = Vector3.new(190.5574188232422, 3.4059066772460938, -1977.99609375)
+local newPosition = Vector3.new(870, 7, 1914)
+
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("BasePart") and obj.Name == targetName then
+        if obj.Position:FuzzyEq(targetPosition, 0.1) then
+            obj.CFrame = CFrame.new(newPosition)
+            print("Işınlandı: " .. obj:GetFullName())
+        end
+    end
+end
+
+-- 6. Script: Kutuları Işınla
+wait(2)
+
+local hedefKonum = Vector3.new(870, 10, 1915)
+
+local kutular = workspace:FindFirstChild("Kutular")
+
+if kutular then
+    local kutularListesi = {}
+    
+    -- Tüm model kutularını listeye al
+    for _, model in ipairs(kutular:GetChildren()) do
+        if model:IsA("Model") and model.PrimaryPart then
+            table.insert(kutularListesi, model)
+        end
+    end
+
+    local toplamKutular = #kutularListesi
+
+    if toplamKutular > 0 then
+        -- İlk kutuyu ışınla
+        kutularListesi[1]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        
+        if toplamKutular >= 2 then
+            -- 1 saniye bekle sonra ikinci kutuyu ışınla
+            task.wait(1)
+            kutularListesi[2]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        end
+        
+        -- 2 saniye bekle
+        task.wait(2)
+
+        -- Kalan kutuları ışınla (3. ve sonrası)
+        for i = 3, toplamKutular do
+            kutularListesi[i]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        end
+    else
+        warn("'Kutular' klasöründe ışınlanacak uygun model bulunamadı.")
+    end
+else
+    warn("workspace içinde 'Kutular' bulunamadı.")
+end
