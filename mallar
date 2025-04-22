@@ -1,0 +1,41 @@
+-- Işınlanacak konum
+local hedefKonum = Vector3.new(870, 10, 1915)
+
+-- Kutular klasörü
+local kutular = workspace:FindFirstChild("Kutular")
+
+if kutular then
+    local kutularListesi = {}
+    
+    -- Tüm model kutularını listeye al
+    for _, model in ipairs(kutular:GetChildren()) do
+        if model:IsA("Model") and model.PrimaryPart then
+            table.insert(kutularListesi, model)
+        end
+    end
+
+    local toplamKutular = #kutularListesi
+
+    if toplamKutular > 0 then
+        -- İlk kutuyu ışınla
+        kutularListesi[1]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        
+        if toplamKutular >= 2 then
+            -- 1 saniye bekle sonra ikinci kutuyu ışınla
+            task.wait(1)
+            kutularListesi[2]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        end
+        
+        -- 2 saniye bekle
+        task.wait(2)
+
+        -- Kalan kutuları ışınla (3. ve sonrası)
+        for i = 3, toplamKutular do
+            kutularListesi[i]:SetPrimaryPartCFrame(CFrame.new(hedefKonum))
+        end
+    else
+        warn("'Kutular' klasöründe ışınlanacak uygun model bulunamadı.")
+    end
+else
+    warn("workspace içinde 'Kutular' bulunamadı.")
+end
