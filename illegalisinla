@@ -1,0 +1,12 @@
+local targetName = "Item_Sell"
+local targetPosition = Vector3.new(190.5574188232422, 3.4059066772460938, -1977.99609375)
+local newPosition = Vector3.new(870, 7, 1914)
+
+for _, obj in ipairs(workspace:GetDescendants()) do
+	if obj:IsA("BasePart") and obj.Name == targetName then
+		if obj.Position:FuzzyEq(targetPosition, 0.1) then
+			obj.CFrame = CFrame.new(newPosition)
+			print("Işınlandı: " .. obj:GetFullName())
+		end
+	end
+end
