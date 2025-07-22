@@ -1,0 +1,140 @@
+local player = game.Players.LocalPlayer
+local carsFolder = workspace:WaitForChild("Cars")
+
+local function getCharacter()
+	if player.Character then
+		return player.Character
+	else
+		return player.CharacterAdded:Wait()
+	end
+end
+
+local function getClosestTofas()
+	local character = getCharacter()
+	local rootPart = character:WaitForChild("HumanoidRootPart")
+
+	local closest = nil
+	local minDistance = math.huge
+
+	for _, model in ipairs(carsFolder:GetChildren()) do
+		if model.Name == "Tofas Sahin" and model:IsA("Model") and model.PrimaryPart then
+			local dist = (model.PrimaryPart.Position - rootPart.Position).Magnitude
+			if dist < minDistance then
+				minDistance = dist
+				closest = model
+			end
+		end
+	end
+
+	return closest
+end
+
+-- Ana işlem
+task.wait(1) -- Her şey yüklensin diye az bekle
+
+local closestTofas = getClosestTofas()
+if closestTofas then
+	closestTofas.Name = "Tofas Sahinn"
+	print("En yakın Tofas Sahin'in ismi değiştirildi.")
+else
+	warn("Yakında 'Tofas Sahin' modeli bulunamadı.")
+end
+
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local car = workspace:WaitForChild("Cars"):WaitForChild("Tofas Sahinn")
+local seat = car:FindFirstChildWhichIsA("VehicleSeat") or car:FindFirstChild("VehicleSeat")
+
+if not seat then
+    warn("VehicleSeat bulunamadı.")
+    return
+end
+
+if not car.PrimaryPart then
+    local fallbackPart = car:FindFirstChildWhichIsA("BasePart")
+    if fallbackPart then
+        car.PrimaryPart = fallbackPart
+        warn("PrimaryPart otomatik olarak " .. fallbackPart.Name .. " olarak ayarlandı.")
+    else
+        warn("PrimaryPart atanamadı.")
+        return
+    end
+end
+
+local root = car.PrimaryPart
+
+-- Drift ayarları (daha kaygan hale getirildi)
+local driftDirection = 0
+local driftIntensity = 0
+local maxDrift = 0.4           -- Daha yüksek maksimum drift
+local minSpeedForDrift = 10    -- Daha düşük hızda bile drift yapabilir
+local driftAcceleration = 0.01  -- Drift daha hızlı artar
+local driftDeceleration = 0.01 -- Daha yavaş azalır, kayma uzun sürer
+local maxSpeed = 150
+local maxThrottle = 2
+
+local isShiftHeld = false
+local shiftKeyHeldTime = 0
+
+-- Drift yönü cooldown
+local lastDriftChange = 0
+local driftCooldown = 0
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+        isShiftHeld = true
+        shiftKeyHeldTime = tick()
+    end
+
+    if isShiftHeld and (input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D) then
+        local now = tick()
+        if now - lastDriftChange >= driftCooldown then
+            if input.KeyCode == Enum.KeyCode.A then
+                driftDirection = 1
+            elseif input.KeyCode == Enum.KeyCode.D then
+                driftDirection = -1
+            end
+            lastDriftChange = now
+        end
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+        isShiftHeld = false
+    end
+
+    if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then
+        driftDirection = 0
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    local speed = seat.Velocity.Magnitude
+
+    if isShiftHeld and driftDirection ~= 0 and speed > minSpeedForDrift then
+        driftIntensity = math.clamp(driftIntensity + driftAcceleration, 0, maxDrift)
+
+        local speedFactor = math.clamp(1 - (speed / maxSpeed), 0.5, 1) -- daha az sınırlama
+        local angle = driftIntensity * driftDirection * 5 * speedFactor -- açıyı büyüttük
+        angle = math.clamp(angle, -20, 20) -- daha büyük drift açısı
+
+        car:SetPrimaryPartCFrame(car.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(angle), 0))
+
+        -- Drift sırasında tam gaz ver
+        seat.Throttle = maxThrottle
+
+    elseif not isShiftHeld then
+        -- Drift etkisini yavaş azalt
+        if tick() - shiftKeyHeldTime < 2 then
+            driftIntensity = math.max(driftIntensity - driftDeceleration, 0)
+            seat.Throttle = maxThrottle
+        else
+            driftIntensity = 0
+            seat.Throttle = 1
+        end
+    end
+end)
