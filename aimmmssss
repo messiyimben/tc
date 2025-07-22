@@ -7,8 +7,10 @@ local mouse = player:GetMouse()
 local camera = workspace.CurrentCamera
 
 -- Aimlock ayarları
-local fov = 50
-local maxDistance = 150
+local defaultFov = 80
+local boostedFov = 120
+local fov = defaultFov
+local maxDistance = 220
 local rightClicking = false
 local currentTarget = nil
 
@@ -76,10 +78,34 @@ local function aimAt(target)
 	end
 end
 
+-- F tuşu basılı mı kontrolü için
+local holdingF = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.N then
+		-- Araç gizleme/gösterme
+		toggleParts()
+	elseif input.KeyCode == Enum.KeyCode.F then
+		holdingF = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.F then
+		holdingF = false
+	end
+end)
+
 -- Ana döngü
 RunService.Heartbeat:Connect(function()
 	local screenSize = camera.ViewportSize
 	local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+	
+	-- FOV değerini güncelle
+	fov = holdingF and boostedFov or defaultFov
+	
 	fovCircle.Position = center
 	fovCircle.Radius = fov
 
@@ -126,7 +152,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- Araç parçalarını gizleme/gösterme fonksiyonu
-local function toggleParts()
+function toggleParts()
 	isHidden = not isHidden
 
 	for _, car in pairs(carsFolder:GetChildren()) do
@@ -169,11 +195,3 @@ local function toggleParts()
 		end
 	end
 end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-
-	if input.KeyCode == Enum.KeyCode.N then
-		toggleParts()
-	end
-end)
