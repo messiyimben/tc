@@ -1,0 +1,179 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+local camera = workspace.CurrentCamera
+
+-- Aimlock ayarları
+local fov = 50
+local maxDistance = 150
+local rightClicking = false
+local currentTarget = nil
+
+-- FOV çemberi (Drawing API)
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 2
+fovCircle.Color = Color3.fromRGB(153, 102, 204)
+fovCircle.Visible = false
+fovCircle.Filled = false
+fovCircle.Transparency = 0.5
+
+-- Araç gizleme için kayıtlar (model ve color ayrı)
+local carsFolder = workspace:WaitForChild("Cars")
+local isHidden = false
+local savedModels = {}
+local savedColors = {}
+
+-- Sağ tıklama başlatma / bırakma
+mouse.Button2Down:Connect(function()
+	rightClicking = true
+end)
+
+mouse.Button2Up:Connect(function()
+	rightClicking = false
+	if currentTarget and currentTarget.Character then
+		local hrp = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Anchored = false
+		end
+	end
+	currentTarget = nil
+end)
+
+-- Mouse imlecine en yakın hedefi seçme
+local function getClosestTarget()
+	local closestTarget = nil
+	local closestDistance = math.huge
+	local mousePos = Vector2.new(mouse.X, mouse.Y)
+
+	for _, target in ipairs(Players:GetPlayers()) do
+		if target ~= player and target.Character and target.Character:FindFirstChild("Head") then
+			local head = target.Character.Head
+			local dist = (camera.CFrame.Position - head.Position).Magnitude
+			if dist <= maxDistance then
+				local screenPos, onScreen = camera:WorldToScreenPoint(head.Position)
+				if onScreen then
+					local screenDist = (mousePos - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+					if screenDist < fov and screenDist < closestDistance then
+						closestTarget = target
+						closestDistance = screenDist
+					end
+				end
+			end
+		end
+	end
+
+	return closestTarget
+end
+
+-- Kamerayı hedefe doğru çevirme
+local function aimAt(target)
+	if target and target.Character and target.Character:FindFirstChild("Head") then
+		local headPos = target.Character.Head.Position
+		camera.CFrame = CFrame.lookAt(camera.CFrame.Position, headPos)
+	end
+end
+
+-- Ana döngü
+RunService.Heartbeat:Connect(function()
+	local screenSize = camera.ViewportSize
+	local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+	fovCircle.Position = center
+	fovCircle.Radius = fov
+
+	if rightClicking then
+		fovCircle.Visible = true
+
+		local target = getClosestTarget()
+		if target then
+			if target ~= currentTarget then
+				if currentTarget and currentTarget.Character then
+					local oldHrp = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+					if oldHrp then
+						oldHrp.Anchored = false
+					end
+				end
+				currentTarget = target
+			end
+
+			aimAt(currentTarget)
+
+			local hrp = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and not hrp.Anchored then
+				hrp.Anchored = true
+			end
+		else
+			if currentTarget and currentTarget.Character then
+				local oldHrp = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+				if oldHrp then
+					oldHrp.Anchored = false
+				end
+			end
+			currentTarget = nil
+		end
+	else
+		fovCircle.Visible = false
+		if currentTarget and currentTarget.Character then
+			local oldHrp = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+			if oldHrp then
+				oldHrp.Anchored = false
+			end
+		end
+		currentTarget = nil
+	end
+end)
+
+-- Araç parçalarını gizleme/gösterme fonksiyonu
+local function toggleParts()
+	isHidden = not isHidden
+
+	for _, car in pairs(carsFolder:GetChildren()) do
+		if car:IsA("Model") then
+			local body = car:FindFirstChild("Body")
+			if body then
+				local bodyBody = body:FindFirstChild("Body")
+				if bodyBody and bodyBody:FindFirstChild("Model") then
+					local model = bodyBody.Model
+					if isHidden then
+						if not savedModels[model] then
+							savedModels[model] = model:Clone()
+						end
+						model:Destroy()
+					else
+						local saved = savedModels[model]
+						if saved then
+							saved.Parent = bodyBody
+							savedModels[model] = nil
+						end
+					end
+				end
+
+				local color = body:FindFirstChild("Color")
+				if color then
+					if isHidden then
+						if not savedColors[color] then
+							savedColors[color] = color:Clone()
+						end
+						color:Destroy()
+					else
+						local saved = savedColors[color]
+						if saved then
+							saved.Parent = body
+							savedColors[color] = nil
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.KeyCode == Enum.KeyCode.N then
+		toggleParts()
+	end
+end)
