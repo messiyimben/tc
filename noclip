@@ -1,0 +1,31 @@
+for _, model in pairs(workspace.Cars:GetChildren()) do
+    if model:IsA("Model") and model.Name ~= "Tofas Sahinn" then
+        -- DriveSeat veya VehicleSeat bulalım
+        local seat = model:FindFirstChild("DriveSeat") or model:FindFirstChildOfClass("VehicleSeat")
+        
+        -- Eğer koltuk yoksa ya da koltukta kimse oturmuyorsa işlem yapma
+        if not seat or not seat.Occupant then
+            -- Koltuk boş veya yoksa buraya girer, yani CanCollide'u değiştirme (etkileme)
+            -- Yani bu model için hiçbir şey yapmıyoruz
+        else
+            -- Koltukta biri oturuyorsa CanCollide = false yap
+            for _, part in pairs(model:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end
+
+local player = game.Players.LocalPlayer
+
+for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+    if otherPlayer ~= player and otherPlayer.Character then
+        for _, part in pairs(otherPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end
