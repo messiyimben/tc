@@ -1,0 +1,73 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Ayarlar
+local velocityEnabled = true
+local velocityMult = 0.016 -- Hız artırma katsayısı
+local brakeForce = 0.003-- Fren kuvveti
+local maxSpeed = 70 -- Maksimum hız (Roblox biriminde)
+
+-- Varsayılan Keybindler
+local velocityKey = Enum.KeyCode.W
+local brakeKey = Enum.KeyCode.S
+
+-- Hızlandırıcı (W basılı tutulduğunda)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or not velocityEnabled then return end
+	if input.KeyCode == velocityKey then
+		coroutine.wrap(function()
+			while UserInputService:IsKeyDown(velocityKey) and velocityEnabled do
+				task.wait()
+				local character = LocalPlayer.Character
+				if not character then continue end
+				local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+				local seat = humanoid and humanoid.SeatPart
+				if seat and seat:IsA("VehicleSeat") then
+					-- Mevcut hız
+					local currentVelocity = seat.AssemblyLinearVelocity
+					-- Yatay hız (X ve Z ekseninde)
+					local horizontalSpeed = Vector3.new(currentVelocity.X, 0, currentVelocity.Z).Magnitude
+					-- Hız maksimumdan küçükse artır
+					if horizontalSpeed < maxSpeed then
+						seat.AssemblyLinearVelocity *= Vector3.new(1 + velocityMult, 1, 1 + velocityMult)
+					end
+				end
+			end
+		end)()
+	end
+end)
+
+-- Ani fren (S basılı tutulduğunda)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or not velocityEnabled then return end
+	if input.KeyCode == brakeKey then
+		coroutine.wrap(function()
+			while UserInputService:IsKeyDown(brakeKey) and velocityEnabled do
+				task.wait()
+				local character = LocalPlayer.Character
+				if not character then continue end
+				local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+				local seat = humanoid and humanoid.SeatPart
+				if seat and seat:IsA("VehicleSeat") then
+					seat.AssemblyLinearVelocity *= Vector3.new(1 - brakeForce, 1, 1 - brakeForce)
+				end
+			end
+		end)()
+	end
+end)
+
+-- Durdurma Tuşu (P'ye basıldığında aracı tamamen durdurur)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or not velocityEnabled then return end
+	if input.KeyCode == Enum.KeyCode.P then
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		if seat and seat:IsA("VehicleSeat") then
+			seat.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			seat.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end
+end)
