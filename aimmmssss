@@ -14,21 +14,33 @@ local maxDistance = 220
 local rightClicking = false
 local currentTarget = nil
 
--- FOV çemberi (Drawing API)
-local fovCircle = Drawing.new("Circle")
-fovCircle.Thickness = 2
-fovCircle.Color = Color3.fromRGB(153, 102, 204)
-fovCircle.Visible = false
-fovCircle.Filled = false
-fovCircle.Transparency = 0.5
+-- GUI FOV çemberi
+local playerGui = player:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FOVGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
 
--- Araç gizleme için kayıtlar (model ve color ayrı)
+local fovCircle = Instance.new("Frame")
+fovCircle.Size = UDim2.new(0, defaultFov * 2, 0, defaultFov * 2)
+fovCircle.Position = UDim2.new(0.5, -defaultFov, 0.5, -defaultFov)
+fovCircle.BackgroundColor3 = Color3.fromRGB(153, 102, 204)
+fovCircle.BackgroundTransparency = 0.5
+fovCircle.BorderSizePixel = 0
+fovCircle.Visible = false
+fovCircle.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = fovCircle
+
+-- Araç gizleme için kayıtlar
 local carsFolder = workspace:WaitForChild("Cars")
 local isHidden = false
 local savedModels = {}
 local savedColors = {}
 
--- Sağ tıklama başlatma / bırakma
+-- Sağ tıklama başlat / bırak
 mouse.Button2Down:Connect(function()
 	rightClicking = true
 end)
@@ -44,7 +56,7 @@ mouse.Button2Up:Connect(function()
 	currentTarget = nil
 end)
 
--- Mouse imlecine en yakın hedefi seçme
+-- En yakın hedefi bul
 local function getClosestTarget()
 	local closestTarget = nil
 	local closestDistance = math.huge
@@ -70,7 +82,7 @@ local function getClosestTarget()
 	return closestTarget
 end
 
--- Kamerayı hedefe doğru çevirme
+-- Kamerayı hedefe çevir
 local function aimAt(target)
 	if target and target.Character and target.Character:FindFirstChild("Head") then
 		local headPos = target.Character.Head.Position
@@ -78,14 +90,13 @@ local function aimAt(target)
 	end
 end
 
--- F tuşu basılı mı kontrolü için
+-- F tuşu kontrolü
 local holdingF = false
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
 	if input.KeyCode == Enum.KeyCode.N then
-		-- Araç gizleme/gösterme
 		toggleParts()
 	elseif input.KeyCode == Enum.KeyCode.F then
 		holdingF = true
@@ -101,13 +112,13 @@ end)
 -- Ana döngü
 RunService.Heartbeat:Connect(function()
 	local screenSize = camera.ViewportSize
-	local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
-	
-	-- FOV değerini güncelle
+	local centerX, centerY = screenSize.X / 2, screenSize.Y / 2
+
 	fov = holdingF and boostedFov or defaultFov
-	
-	fovCircle.Position = center
-	fovCircle.Radius = fov
+
+	-- FOV GUI boyut ve pozisyon güncelle
+	fovCircle.Size = UDim2.new(0, fov * 2, 0, fov * 2)
+	fovCircle.Position = UDim2.new(0.5, -fov, 0.5, -fov)
 
 	if rightClicking then
 		fovCircle.Visible = true
@@ -151,7 +162,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Araç parçalarını gizleme/gösterme fonksiyonu
+-- Araçları gizleme/gösterme
 function toggleParts()
 	isHidden = not isHidden
 
