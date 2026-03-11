@@ -1,6 +1,6 @@
 --realspawn
 loadstring(game:HttpGet("https://raw.githubusercontent.com/messiyimben/tc/refs/heads/main/spawn"))()
-wait(1)
+wait(10)
 
 -- Part oluşturma
 local part = Instance.new("Part") -- Yeni bir Part oluştur
