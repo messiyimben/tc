@@ -1,0 +1,81 @@
+----------------------------------------------------
+-- EQUIPMENT İSİMLENDİRME + SPAWN + İSİMLERİ GERI DÖNDÜR
+----------------------------------------------------
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local workspace = game:GetService("Workspace")
+local equipmentFolder = workspace:WaitForChild("Objects"):WaitForChild("Equipment")
+local spawnEvent = ReplicatedStorage.Modules.Larry:WaitForChild("FNCSpawnEquipment")
+
+local equipmentsToSpawn = {
+	"ChallengerMT9",
+	"JDShank",
+	"HorschJoker",
+	"TempoL16",
+	"TK1500",
+	"IndustrialLogHauler",
+	"MediumSprinkler",
+}
+
+local spawnedEquipments = {} -- Spawnlanan tüm araçları kaydetmek için
+
+-- Rastgele ID oluşturmak için yardımcı fonksiyon
+local function getRandomID()
+	return math.random(1,99)
+end
+
+-- Her equipment için spawn
+for _, equipName in ipairs(equipmentsToSpawn) do
+	local existingEquip = {}
+	
+	-- Mevcut araçları rastgele isimlendir
+	for _, obj in ipairs(equipmentFolder:GetChildren()) do
+		if obj.Name == equipName then
+			local newName = equipName..getRandomID()
+			obj.Name = newName
+			table.insert(existingEquip, obj)
+			print("İsimlendirildi:", newName)
+		end
+	end
+
+	-- Eğer yoksa template ile spawnla 3 tane
+	if #existingEquip == 0 then
+		local template = equipmentFolder:FindFirstChild(equipName)
+		if template then
+			for i = 1,3 do
+				local spawned = spawnEvent:InvokeServer(template, nil)
+				task.wait(0.5)
+				if spawned then
+					local newName = equipName..getRandomID()
+					spawned.Name = newName
+					table.insert(existingEquip, spawned)
+					print("Spawnlandı ve isimlendirildi:", newName)
+				end
+			end
+		else
+			warn("Template bulunamadı:", equipName)
+		end
+	end
+
+	-- Mevcut araçları da spawn event ile aktive et
+	for _, obj in ipairs(existingEquip) do
+		spawnEvent:InvokeServer(obj, nil)
+		task.wait(0.01)
+		table.insert(spawnedEquipments, obj)
+		print("Spawnlandı:", obj.Name)
+	end
+end
+
+print("Tüm araçlar spawnlandı ve rastgele isimlendirildi!")
+
+-- Tüm spawnlanan araçların isimlerini eski template isimlerine döndür
+for _, equip in ipairs(spawnedEquipments) do
+	for _, templateName in ipairs(equipmentsToSpawn) do
+		if equip.Name:find(templateName) then
+			equip.Name = templateName
+			break
+		end
+	end
+end
+
+print("Tüm araçların isimleri eski haline döndü!")
