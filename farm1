@@ -123,38 +123,45 @@ local function getCapacity()
 	return equipment:WaitForChild("Configurations"):WaitForChild("Capacity").Value
 end
 
--- Sonsuz döngü ile 50 saniyede bir çalıştır
-while true do
-	for _, obj in pairs(draggableFolder:GetChildren()) do
+-- 30 saniyede bir çalıştıran non-blocking fonksiyon
+local function autoSeed()
+	spawn(function()  -- yeni thread başlatır, ana thread bloklanmaz
+		while true do
+			for _, obj in pairs(draggableFolder:GetChildren()) do
 
-		if getCapacity() >= 1100 then
-			print("Makine doldu, işlem durduruldu.")
-			break
-		end
-		
-		if obj.Name == "SeedBox" then
-			local config = obj:FindFirstChild("Configurations")
-			
-			if config then
-				local seedType = config:FindFirstChild("SeedType")
+				if getCapacity() >= 1100 then
+					print("Makine doldu, işlem durduruldu.")
+					break
+				end
 				
-				if seedType and seedType.Value == "Cypress" then
-					print("Uygun SeedBox bulundu:", obj)
+				if obj.Name == "SeedBox" then
+					local config = obj:FindFirstChild("Configurations")
+					
+					if config then
+						local seedType = config:FindFirstChild("SeedType")
+						
+						if seedType and seedType.Value == "Cypress" then
+							print("Uygun SeedBox bulundu:", obj)
 
-					-- Pick up
-					carryRemote:FireServer(obj)
-					task.wait(0.001)  -- server’ın işlemesi için bekle
+							-- Pick up
+							carryRemote:FireServer(obj)
+							task.wait(0.001)  -- server’ın işlemesi için bekle
 
-					-- Makineye yükle
-					fillRemote:InvokeServer(equipment)
-					task.wait(0.001)
+							-- Makineye yükle
+							fillRemote:InvokeServer(equipment)
+							task.wait(0.001)
+						end
+					end
 				end
 			end
-		end
-	end
 
-	task.wait(30)  -- 50 saniye bekle ve tekrar çalıştır
+			task.wait(30)  -- 30 saniye bekle, ama ana thread’i bloklamaz
+		end
+	end)
 end
+
+-- Fonksiyonu başlat
+autoSeed()
 
 --SPAWNNNNNN
 local equipmentFolder = workspace:WaitForChild("Objects"):WaitForChild("Equipment")
