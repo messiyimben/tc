@@ -1,0 +1,708 @@
+--realspawn
+loadstring(game:HttpGet("https://raw.githubusercontent.com/messiyimben/tc/refs/heads/main/spawn"))()
+wait(1)
+
+-- Part oluşturma
+local part = Instance.new("Part") -- Yeni bir Part oluştur
+part.Size = Vector3.new(800, 0.15, 600) -- Boyutlar: X, Y, Z
+part.Position = Vector3.new(-1206, 378, -584) -- Konum
+part.Anchored = true -- Part'ın yerinde sabit kalması için
+part.Parent = workspace -- Workspace içine ekle
+
+-- İsteğe bağlı: Renk ve malzeme
+part.BrickColor = BrickColor.new("Bright gray")
+part.Material = Enum.Material.Plastic
+
+
+-- Aranacak pozisyon
+local targetPosition = Vector3.new(-1206.1495361328125, 380.00201416015625, -584.870361328125)
+local tolerance = 0.1 -- Pozisyonu kontrol ederken küçük farkları tolere etmek için
+
+-- Workspace altındaki tüm Objects.Fields içindeki objeleri kontrol et
+local fieldsFolder = workspace.Objects.Fields
+
+for _, obj in pairs(fieldsFolder:GetChildren()) do
+    local objPosition
+    
+    if obj:IsA("BasePart") then
+        objPosition = obj.Position
+    elseif obj:IsA("Model") and obj.PrimaryPart then
+        objPosition = obj.PrimaryPart.Position
+    end
+
+    if objPosition and (objPosition - targetPosition).Magnitude <= tolerance then
+        -- Pozisyon eşleşirse ismini değiştir
+        obj.Name = "Field1"
+        print(obj.Name .. " ismi Field1 olarak değiştirildi!")
+        break -- Bulduktan sonra döngüyü durdur
+    end
+end
+
+local function MainCycle()
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local buildings = workspace.Objects.Buildings:GetChildren()
+local count = 1
+
+local targetPos = Vector3.new(129.5, 138.5, -235)
+
+for _, v in pairs(workspace.Stores.DropOffs:GetChildren()) do
+	if v:IsA("BasePart") then
+		if (v.Position - targetPos).Magnitude < 1 then
+			v.Name = "DropOff1"
+		end
+	end
+end
+
+
+----------------------------------------------------
+-- JUMP BEFORE SPAWN
+----------------------------------------------------
+local function jump()
+	if humanoid and humanoid.Health > 0 then
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		task.wait(0.15)
+	end
+end
+
+----------------------------------------------------
+-- TELEPORT FONKSİYONU
+----------------------------------------------------
+local function teleport(vehicle, position)
+    if not vehicle.PrimaryPart then
+        -- PrimaryPart yoksa otomatik ata
+        for _, part in ipairs(vehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                vehicle.PrimaryPart = part
+                break
+            end
+        end
+    end
+    local rotation = CFrame.Angles(0, math.rad(90), 0)
+    vehicle:PivotTo(CFrame.new(position) * rotation)
+end
+
+wait(1)
+
+local equipment = workspace.Objects.Equipment
+
+-- Araçlar ve DM_ID değerleri
+local vehicles = {
+    ChallengerMT9 = 27,
+    JDShank = 142,
+    HorschJoker = 31,
+    IndustrialLogHauler = 152,
+    MediumSprinkler = 148,
+    TK1500 = 28,
+    TempoL16 = 146,
+}
+
+-- Tüm Equipment objelerini dolaş
+for _, obj in ipairs(equipment:GetChildren()) do
+    local name = obj.Name
+    local dm_id = obj:GetAttribute("DM_ID")
+    local expectedDM = vehicles[name]
+
+    -- Eğer objenin DM_ID değeri beklenen değerle eşleşmiyorsa veya vehicles tablosunda yoksa sil
+    if not (expectedDM and dm_id == expectedDM) then
+        obj:Destroy()
+        print("Silindi: " .. name)
+    else
+        -- Eşleşen araçların ismini değiştirmek istersen buraya ekleyebilirsi
+    end
+end
+
+wait(1)
+
+--SPAWNNNNNN
+local equipmentFolder = workspace:WaitForChild("Objects"):WaitForChild("Equipment")
+local spawnEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Larry"):WaitForChild("FNCSpawnEquipment")
+
+local equipmentsToSpawn = {
+	"ChallengerMT9",
+	"JDShank",
+	"HorschJoker",
+	"TempoL16",
+	"TK1500",
+	"IndustrialLogHauler",
+}
+
+
+if false then
+	for _, equipmentName in ipairs(equipmentsToSpawn) do
+		local equipmentModel = equipmentFolder:FindFirstChild(equipmentName)
+		if equipmentModel then
+			pcall(function()
+				spawnEvent:InvokeServer(equipmentModel, nil)
+			end)
+			task.wait(0.4)
+		end
+	end
+end
+
+task.wait(2)
+
+local draggableFolder = workspace:WaitForChild("Objects"):WaitForChild("DraggableObjects")
+local equipment = workspace:WaitForChild("Objects"):WaitForChild("Equipment"):WaitForChild("TempoL16")
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local larryModule = replicatedStorage:WaitForChild("Modules"):WaitForChild("Larry")
+
+local carryRemote = larryModule:WaitForChild("EVTRequestToCarry")
+local fillRemote = larryModule:WaitForChild("FNCFillSeeder")
+
+local function getCapacity()
+	return equipment:WaitForChild("Configurations"):WaitForChild("Capacity").Value
+end
+
+-- 30 saniyede bir çalıştıran non-blocking fonksiyon
+local function autoSeed()
+	spawn(function()  -- yeni thread başlatır, ana thread bloklanmaz
+		while true do
+			for _, obj in pairs(draggableFolder:GetChildren()) do
+
+				if getCapacity() >= 1100 then
+					print("Makine doldu, işlem durduruldu.")
+					break
+				end
+				
+				if obj.Name == "SeedBox" then
+					local config = obj:FindFirstChild("Configurations")
+					
+					if config then
+						local seedType = config:FindFirstChild("SeedType")
+						
+						if seedType and seedType.Value == "Cypress" then
+							print("Uygun SeedBox bulundu:", obj)
+
+							-- Pick up
+							carryRemote:FireServer(obj)
+							task.wait(0.001)  -- server’ın işlemesi için bekle
+
+							-- Makineye yükle
+							fillRemote:InvokeServer(equipment)
+							task.wait(0.001)
+						end
+					end
+				end
+			end
+
+			task.wait(30)  -- 30 saniye bekle, ama ana thread’i bloklamaz
+		end
+	end)
+end
+
+-- Fonksiyonu başlat
+autoSeed()
+
+----------------------------------------------------
+-- SPAWN EDİLEN EQUIPMENTLERİ BELİRLİ KONUMA IŞINLA
+----------------------------------------------------)
+local tk1500 = equipmentFolder:WaitForChild("TK1500")
+local industrialLogHauler = equipmentFolder:WaitForChild("IndustrialLogHauler")
+
+local spawnPosition = Vector3.new(-909, 170, -723)
+teleport(tk1500, spawnPosition)
+teleport(industrialLogHauler, spawnPosition)
+
+----------------------------------------------------
+-- SEED DOLDURMA (SADECE BİR KEZ, 5 KERE ART ARDA)
+----------------------------------------------------
+
+
+----------------------------------------------------
+-- ARACA OTOMATİK BİNDİRME (SPACE ÖNCESİ)
+----------------------------------------------------
+local enterEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Larry"):WaitForChild("FNCEnterEquipment")
+
+local function enterVehicle(vehicle)
+	if not vehicle.PrimaryPart then return end
+	VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+	task.wait(0.2)
+	VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+	task.wait(0.1)
+	local driveSeat = vehicle.Chassis.Seats:WaitForChild("DriveSeat")
+	enterEvent:InvokeServer(vehicle, driveSeat)
+end
+local challengerModel = equipmentFolder:WaitForChild("ChallengerMT9")
+enterVehicle(challengerModel)
+task.wait(1)
+
+----------------------------------------------------
+-- EQUIPMENT REFERANSLARI
+----------------------------------------------------
+local jdShank = equipmentFolder:WaitForChild("JDShank")
+local horschJoker = equipmentFolder:WaitForChild("HorschJoker")
+local tempoL16 = equipmentFolder:WaitForChild("TempoL16")
+local moveSpeed = 70
+local implementDistanceBehind = 10
+
+----------------------------------------------------
+-- ROTALAR
+----------------------------------------------------
+local routes = {
+    {start = Vector3.new(-994, 381, -870), target = Vector3.new(-1434, 381, -870)},
+	{start = Vector3.new(-994, 381, -840), target = Vector3.new(-1434, 381, -840)},
+	{start = Vector3.new(-994, 381, -810), target = Vector3.new(-1434, 381, -810)},
+	{start = Vector3.new(-994, 381, -780), target = Vector3.new(-1434, 381, -780)},
+	{start = Vector3.new(-994, 381, -750), target = Vector3.new(-1434, 381, -750)},
+	{start = Vector3.new(-994, 381, -730), target = Vector3.new(-1434, 381, -730)},
+	{start = Vector3.new(-994, 381, -700), target = Vector3.new(-1434, 381, -700)},
+	{start = Vector3.new(-994, 381, -670), target = Vector3.new(-1434, 381, -670)},
+	{start = Vector3.new(-994, 381, -640), target = Vector3.new(-1434, 381, -640)},
+	{start = Vector3.new(-994, 381, -610), target = Vector3.new(-1434, 381, -610)},
+	{start = Vector3.new(-994, 381, -580), target = Vector3.new(-1434, 381, -580)},
+	{start = Vector3.new(-994, 381, -550), target = Vector3.new(-1434, 381, -550)},
+	{start = Vector3.new(-994, 381, -520), target = Vector3.new(-1434, 381, -520)},
+	{start = Vector3.new(-994, 381, -490), target = Vector3.new(-1434, 381, -490)},
+	{start = Vector3.new(-994, 381, -460), target = Vector3.new(-1434, 381, -460)},
+	{start = Vector3.new(-994, 381, -430), target = Vector3.new(-1434, 381, -430)},
+	{start = Vector3.new(-994, 381, -400), target = Vector3.new(-1434, 381, -400)},
+	{start = Vector3.new(-994, 381, -370), target = Vector3.new(-1434, 381, -370)},
+	{start = Vector3.new(-994, 381, -340), target = Vector3.new(-1434, 381, -340)},
+	{start = Vector3.new(-994, 381, -310), target = Vector3.new(-1434, 381, -310)},
+	{start = Vector3.new(-994, 381, -280), target = Vector3.new(-1434, 381, -280)},
+}
+
+
+
+----------------------------------------------------
+-- TELEPORT
+----------------------------------------------------
+local function teleport(vehicle, position)
+	local rotation = CFrame.Angles(0, math.rad(90), 0)
+	vehicle:PivotTo(CFrame.new(position) * rotation)
+end
+
+----------------------------------------------------
+-- DRIVE (PHYSICS BASED)
+----------------------------------------------------
+local challenger = challengerModel
+local function driveTo(targetPos)
+
+	VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+
+	local connection
+	connection = RunService.RenderStepped:Connect(function(dt)
+
+		if not challenger.PrimaryPart then return end
+
+		local pivot = challenger:GetPivot()
+		local pos = pivot.Position
+
+		local direction = (targetPos - pos)
+		local distance = direction.Magnitude
+
+		if distance < 2 then
+			connection:Disconnect()
+			VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+			return
+		end
+
+		direction = direction.Unit
+
+		-- araç yönünü hedefe kilitle
+		local lookCFrame = CFrame.lookAt(pos, pos + direction)
+
+		-- ileri hareket
+		local move = direction * moveSpeed * dt
+
+		challenger:PivotTo(lookCFrame + move)
+
+	end)
+
+	repeat task.wait() until (challenger:GetPivot().Position - targetPos).Magnitude < 2
+
+end
+
+
+
+----------------------------------------------------
+-- HITCH / UNHITCH
+----------------------------------------------------
+local function hitch(implement)
+	if not challenger.PrimaryPart or not implement.PrimaryPart then return end
+	local behindCFrame = challenger:GetPivot() * CFrame.new(0,0,implementDistanceBehind)
+	implement:PivotTo(behindCFrame)
+	task.wait(0.1)
+	ReplicatedStorage.Modules.Larry.FNCAttemptHitch:InvokeServer(
+		challenger.Components.Hitchable,
+		implement.Chassis.HitchableSocket
+	)
+end
+
+local function unhitch()
+	ReplicatedStorage.Modules.Larry.FNCUnhitch:InvokeServer(challenger.Components.Hitchable)
+end
+
+----------------------------------------------------
+-- RUN CYCLE
+----------------------------------------------------
+local function runCycle(implement)
+	for i, route in ipairs(routes) do
+		teleport(challenger, route.start)
+		if i == 1 then
+			hitch(implement)
+			task.wait(1)
+		else
+			teleport(implement, route.start)
+		end
+		task.wait(0.5)
+		driveTo(route.target)
+		task.wait(0.5)
+	end
+	unhitch()
+	task.wait(1)
+end
+
+----------------------------------------------------
+-- ANA AKIŞ
+----------------------------------------------------
+runCycle(jdShank)
+teleport(jdShank, Vector3.new(-879, 169, -721))
+task.wait(2)
+
+runCycle(horschJoker)
+teleport(horschJoker, Vector3.new(-879, 169, -721))
+task.wait(2)
+
+runCycle(tempoL16)
+task.wait(2)
+
+----------------------------------------------------
+-- MEDIUM SPRINKLER SPAWN & HITCH
+----------------------------------------------------
+local mediumSprinkler = equipmentFolder:WaitForChild("MediumSprinkler")
+spawnEvent:InvokeServer(mediumSprinkler,nil)
+task.wait(1)
+teleport(challenger, Vector3.new(-980, 381, -870))
+teleport(mediumSprinkler, Vector3.new(-980, 381, -870))
+hitch(mediumSprinkler)
+task.wait(3)
+
+----------------------------------------------------
+-- AUTOMATIC SPRINKLER SCRIPT (ENTEGRE EDİLDİ)
+----------------------------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local cropFolder = workspace:WaitForChild("GameplayVisuals"):WaitForChild("CropAesthetics")
+local fieldObj = workspace:WaitForChild("Objects"):WaitForChild("Fields"):WaitForChild("Field1")
+
+local mediumSprinkler = workspace:WaitForChild("Objects"):WaitForChild("Equipment"):WaitForChild("MediumSprinkler")
+local targetSpray = mediumSprinkler
+    :WaitForChild("Components")
+    :WaitForChild("Sprinkler")
+    :WaitForChild("RaycastPart")
+    :GetChildren()[2]
+
+local Event = ReplicatedStorage.Modules.Larry.FNCSprayFieldCell
+
+-- Ayarlar
+local LOOP_COUNT = 25
+local LOOP_DELAY = 4 -- saniye
+local BATCH_SIZE = 1000
+
+-- Field numaralarını bir kez topla
+local fieldNumbers = {}
+for _, field in ipairs(cropFolder:GetChildren()) do
+    local num = string.match(field.Name, "%d+%->(%d+)")
+    if num then
+        fieldNumbers[#fieldNumbers + 1] = tonumber(num)
+    end
+end
+
+print("Toplam field bulundu:", #fieldNumbers)
+
+-- Fonksiyon: tüm fieldleri tek seferde sulama
+local function SprayAllFields()
+    local count = #fieldNumbers
+    local i = 1
+
+    while i <= count do
+        local batchFields = {}
+        local batchTargets = {}
+
+        for j = 0, BATCH_SIZE - 1 do
+            local index = i + j
+            if index <= count then
+                batchFields[#batchFields + 1] = fieldNumbers[index]
+                batchTargets[#batchTargets + 1] = targetSpray
+            end
+        end
+
+        Event:InvokeServer(fieldObj, batchFields, batchTargets)
+        i += BATCH_SIZE
+    end
+end
+
+-- 25 tur döngü ile otomatik sulama
+for loop = 1, LOOP_COUNT do
+    SprayAllFields()
+    print("Tur:", loop, "| Sulanan field:", #fieldNumbers)
+    if loop < LOOP_COUNT then
+        task.wait(LOOP_DELAY)
+    end
+end
+
+print("Sulama sistemi tamamlandı.")
+----------------------------------------------------
+-- PARK CHALLENGER
+----------------------------------------------------
+teleport(challenger, Vector3.new(-951, 169, -699))
+task.wait(1)
+
+----------------------------------------------------
+-- TK1500 ENTER & TELEPORT
+----------------------------------------------------
+local tk1500 = equipmentFolder:WaitForChild("TK1500")
+enterVehicle(tk1500)
+teleport(tk1500, Vector3.new(-994, 381, -870))
+task.wait(1)
+
+----------------------------------------------------
+-- AUTOMATIC TREE CUTTING (TK1500 WITH ROUTES)
+----------------------------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local workspace = game:GetService("Workspace")
+
+-- Makineyi al
+local machine = workspace:WaitForChild("Objects"):WaitForChild("Equipment"):WaitForChild("TK1500")
+
+-- PrimaryPart yoksa otomatik ata
+if not machine.PrimaryPart then
+    for _, part in ipairs(machine:GetDescendants()) do
+        if part:IsA("BasePart") then
+            machine.PrimaryPart = part
+            break
+        end
+    end
+end
+
+-- Ağaçlar ve eventler
+local cropFolder = workspace:WaitForChild("GameplayVisuals"):WaitForChild("CropAesthetics")
+local fieldObj = workspace:WaitForChild("Objects"):WaitForChild("Fields"):WaitForChild("Field1")
+local stage1Event = ReplicatedStorage.Modules.Larry.EVTCutTreeWithClaw_Stage1
+local stage2Event = ReplicatedStorage.Modules.Larry.EVTCutTreeWithClaw_Stage2
+
+-- Rotalar
+local routes = {
+    {start = Vector3.new(-994, 381, -870), target = Vector3.new(-1434, 381, -870)},
+	{start = Vector3.new(-994, 381, -840), target = Vector3.new(-1434, 381, -840)},
+	{start = Vector3.new(-994, 381, -810), target = Vector3.new(-1434, 381, -810)},
+	{start = Vector3.new(-994, 381, -780), target = Vector3.new(-1434, 381, -780)},
+	{start = Vector3.new(-994, 381, -750), target = Vector3.new(-1434, 381, -750)},
+	{start = Vector3.new(-994, 381, -730), target = Vector3.new(-1434, 381, -730)},
+	{start = Vector3.new(-994, 381, -700), target = Vector3.new(-1434, 381, -700)},
+	{start = Vector3.new(-994, 381, -670), target = Vector3.new(-1434, 381, -670)},
+	{start = Vector3.new(-994, 381, -640), target = Vector3.new(-1434, 381, -640)},
+	{start = Vector3.new(-994, 381, -610), target = Vector3.new(-1434, 381, -610)},
+	{start = Vector3.new(-994, 381, -580), target = Vector3.new(-1434, 381, -580)},
+	{start = Vector3.new(-994, 381, -550), target = Vector3.new(-1434, 381, -550)},
+	{start = Vector3.new(-994, 381, -520), target = Vector3.new(-1434, 381, -520)},
+	{start = Vector3.new(-994, 381, -490), target = Vector3.new(-1434, 381, -490)},
+	{start = Vector3.new(-994, 381, -460), target = Vector3.new(-1434, 381, -460)},
+	{start = Vector3.new(-994, 381, -430), target = Vector3.new(-1434, 381, -430)},
+	{start = Vector3.new(-994, 381, -400), target = Vector3.new(-1434, 381, -400)},
+	{start = Vector3.new(-994, 381, -370), target = Vector3.new(-1434, 381, -370)},
+	{start = Vector3.new(-994, 381, -340), target = Vector3.new(-1434, 381, -340)},
+	{start = Vector3.new(-994, 381, -310), target = Vector3.new(-1434, 381, -310)},
+	{start = Vector3.new(-994, 381, -280), target = Vector3.new(-1434, 381, -280)},
+}
+
+local steps = 10
+local RANGE = 50
+
+for _, route in ipairs(routes) do
+    local startPos = route.start
+    local endPos = route.target
+    local delta = (endPos - startPos) / steps
+
+    -- Makineyi start pozisyonuna ışınla
+    machine:SetPrimaryPartCFrame(CFrame.new(startPos))
+
+    for step = 0, steps do
+        local targetPos = startPos + delta * step
+        machine:SetPrimaryPartCFrame(CFrame.new(targetPos))
+
+        -- Yakındaki ağaçları bul
+        local nearbyTrees = {}
+        for _, obj in ipairs(cropFolder:GetDescendants()) do
+            if obj.Name == "RaycastTrunk" and obj:IsA("BasePart") then
+                if (obj.Position - machine.PrimaryPart.Position).Magnitude <= RANGE then
+                    local current = obj
+                    local fieldNumber = nil
+                    while current.Parent do
+                        current = current.Parent
+                        local num = string.match(current.Name, "%d+%-%>(%d+)")
+                        if num then
+                            fieldNumber = tonumber(num)
+                            break
+                        end
+                    end
+                    if fieldNumber then
+                        nearbyTrees[#nearbyTrees+1] = fieldNumber
+                    end
+                end
+            end
+        end
+
+        -- Kesme işlemi
+        for _, fieldNumber in ipairs(nearbyTrees) do
+            stage1Event:FireServer(fieldObj, fieldNumber)
+        end
+        task.wait(0.05)
+        for _, fieldNumber in ipairs(nearbyTrees) do
+            stage2Event:FireServer(fieldObj, fieldNumber, 2.002)
+        end
+
+        task.wait(0.3) -- limitler için bekleme
+    end
+end
+
+print("Tüm rotalar tamamlandı!")
+
+task.wait(30)
+
+----------------------------------------------------
+-- ZIPLATMA & INDUSTRIAL LOG HAULER'A BIND
+----------------------------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local industrialHauler = workspace:WaitForChild("Objects"):WaitForChild("Equipment"):WaitForChild("IndustrialLogHauler")
+local enterEvent = ReplicatedStorage.Modules.Larry:WaitForChild("FNCEnterEquipment")
+
+-- 1. Zıplat
+if humanoid and humanoid.Health > 0 then
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    task.wait(0.1) -- zıplamanın gerçekleşmesi için kısa bekleme
+end
+
+-- 2. Bind ol
+if industrialHauler.PrimaryPart then
+    local driveSeat = industrialHauler.Chassis.Seats:WaitForChild("DriveSeat")
+    enterEvent:InvokeServer(industrialHauler, driveSeat)
+end
+
+task.wait(0.2) -- bind sonrası küçük bekleme
+
+----------------------------------------------------
+-- LOG TOPLAMA & SAWMILL'E DAĞITMA (AUTO)
+----------------------------------------------------
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+-- Remotes
+local EatEvent = ReplicatedStorage.Modules.Larry:WaitForChild("EVTEatDraggables")
+local DepositEvent = ReplicatedStorage.Modules.Larry:WaitForChild("EVTSawmill.DepositLogs")
+
+-- Objects
+local ObjectsFolder = Workspace:WaitForChild("Objects")
+local DraggableFolder = ObjectsFolder:WaitForChild("DraggableObjects")
+local Hauler = ObjectsFolder:WaitForChild("Equipment"):WaitForChild("IndustrialLogHauler")
+local BuildingsFolder = ObjectsFolder:WaitForChild("Buildings")
+
+-- Sawmill'leri al
+local sawmills = {}
+for _, obj in ipairs(BuildingsFolder:GetChildren()) do
+	if obj.Name:find("Sawmill") then
+		table.insert(sawmills, obj)
+	end
+end
+
+-- Logları alma fonksiyonu
+local function getAllLogs()
+	local logs = {}
+	for _, obj in ipairs(DraggableFolder:GetChildren()) do
+		if obj.Name == "Log" and obj:IsA("Model") then
+			table.insert(logs, obj)
+		end
+	end
+	return logs
+end
+
+----------------------------------------------------
+-- OTOMATİK DÖNGÜ (LOG BİTENE KADAR)
+----------------------------------------------------
+
+while true do
+
+	local allLogs = getAllLogs()
+	local totalLogs = #allLogs
+
+	-- Log kalmadıysa dur
+	if totalLogs == 0 then
+		print("Tüm loglar işlendi. Sistem durdu.")
+		break
+	end
+
+	local totalSawmills = #sawmills
+	local baseAmount = math.floor(totalLogs / totalSawmills)
+	local remainder = totalLogs % totalSawmills
+
+	local logIndex = 1
+
+	for _, sawmill in ipairs(sawmills) do
+
+		local logsForSawmill = baseAmount
+		if remainder > 0 then
+			logsForSawmill += 1
+			remainder -= 1
+		end
+
+		if logsForSawmill > 0 then
+
+			local logsToSend = {}
+
+			for j = 1, logsForSawmill do
+				if allLogs[logIndex] then
+					table.insert(logsToSend, allLogs[logIndex])
+					logIndex += 1
+				end
+			end
+
+			-- Logları hauler'a al
+			task.spawn(function()
+				EatEvent:FireServer(logsToSend)
+			end)
+
+			task.wait(0.001)
+
+			-- Sawmill'e gönder
+			task.spawn(function()
+				DepositEvent:FireServer(Hauler, sawmill)
+			end)
+
+			print(#logsToSend .. " log " .. sawmill.Name .. "e gönderildi.")
+		end
+	end
+
+	task.wait(0.1)
+
+end
+
+
+-- Loglar bittiğinde isteğe bağlı mesaj
+-- print("Tüm loglar işlendi.")
+
+end -- MainCycle sonu
+
+
+while true do
+	print("Yeni döngü başlıyor...")
+	MainCycle()
+	task.wait(10) -- Döngüler arası bekleme (isteğe bağlı)
+end	                  
