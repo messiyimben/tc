@@ -1,0 +1,45 @@
+local draggableFolder = workspace:WaitForChild("Objects"):WaitForChild("DraggableObjects")
+local equipment = workspace:WaitForChild("Objects"):WaitForChild("Equipment"):WaitForChild("TempoL16")
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local larryModule = replicatedStorage:WaitForChild("Modules"):WaitForChild("Larry")
+
+local carryRemote = larryModule:WaitForChild("EVTRequestToCarry")
+local fillRemote = larryModule:WaitForChild("FNCFillSeeder")
+
+local function getCapacity()
+	return equipment:WaitForChild("Configurations"):WaitForChild("Capacity").Value
+end
+
+-- Sonsuz döngü ile 50 saniyede bir çalıştır
+while true do
+	for _, obj in pairs(draggableFolder:GetChildren()) do
+
+		if getCapacity() >= 1100 then
+			print("Makine doldu, işlem durduruldu.")
+			break
+		end
+		
+		if obj.Name == "SeedBox" then
+			local config = obj:FindFirstChild("Configurations")
+			
+			if config then
+				local seedType = config:FindFirstChild("SeedType")
+				
+				if seedType and seedType.Value == "Cypress" then
+					print("Uygun SeedBox bulundu:", obj)
+
+					-- Pick up
+					carryRemote:FireServer(obj)
+					task.wait(0.001)  -- server’ın işlemesi için bekle
+
+					-- Makineye yükle
+					fillRemote:InvokeServer(equipment)
+					task.wait(0.001)
+				end
+			end
+		end
+	end
+
+	task.wait(30)  -- 50 saniye bekle ve tekrar çalıştır
+end
